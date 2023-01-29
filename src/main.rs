@@ -1,6 +1,5 @@
 // Uncomment this block to pass the first stage
 use std::net::TcpListener;
-use std::io::{BufReader, BufWriter};
 use std::io::Write;
 
 fn main() {
@@ -13,10 +12,9 @@ fn main() {
     //
     for stream in listener.incoming() {
         match stream {
-            Ok(_stream) => {
+            Ok(mut _stream) => {
                 println!("accepted new connection");
-                let mut writer = BufWriter::new(&_stream);
-                writer.write_all("+PONG\r\n".as_bytes()).expect("Cant write back");
+                Write::write_all(&mut _stream,"+PONG\r\n".as_bytes()).expect("Cant write back");
             }
             Err(e) => {
                 println!("error: {}", e);
