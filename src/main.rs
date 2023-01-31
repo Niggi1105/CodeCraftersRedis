@@ -6,7 +6,6 @@ use std::time::Duration;
 use std::net::Shutdown;
 
 fn handle_connection(mut stream:TcpStream){
-    thread::spawn(move || {
         let mut  noreq = 0;
         loop{
             let mut buffer: [u8;128] = [0;128];
@@ -25,7 +24,6 @@ fn handle_connection(mut stream:TcpStream){
                 thread::sleep(Duration::from_secs(1));
             }
         }
-    });
 }
 fn main() {
     let listener = TcpListener::bind("127.0.0.1:6379").unwrap();
@@ -33,7 +31,7 @@ fn main() {
         match stream {
             Ok(mut _stream) => {
                 println!("accepted new connection");
-                handle_connection(_stream);
+                thread::spawn(move||handle_connection(_stream));
             }
             Err(e) => {
                 println!("error: {}", e);
