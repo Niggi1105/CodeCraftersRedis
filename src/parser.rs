@@ -96,14 +96,11 @@ impl RedisArray {
     fn parse(mut redis_string: String) -> Result<(Self,String)>{
         let first:usize = 0; 
         let type_char: String = redis_string.chars().nth(first).unwrap().to_string();
-        if type_char != String::from("*"){
-            return Err(anyhow::Error::new(MyRedisError::InvalidRedisSynatx{message:format!("wrong type character for array: {}",type_char)}))
-        }
         let mut string_size = String::new();
         for (i, c) in redis_string.chars().enumerate(){
             if c.is_ascii_control() && match redis_string.chars().nth(i+1){
                 Some(c) => c.is_ascii_control(),
-                None => return Err(anyhow::Error::new(MyRedisError::InvalidRedisSynatx{message:format!("index {} out of range for {}",i.to_string(), redis_string)}))
+                None => return Err(anyhow::Error::new(MyRedisError::InvalidRedisSynatx{message:format!("missing end of redis string (index: {} out of range for: {})",i.to_string(), redis_string)}))
             }{
                 redis_string = redis_string[i+1..].to_string();
                 break;
@@ -214,14 +211,14 @@ impl RedisSimpleString{
 
 impl RedisBulkString{
     fn parse(mut redis_string: String) -> Result<(Self,String)>{
-        redis_string = redis_string.trim_start_matches("-").to_string();
+        redis_string = redis_string.trim_start_matches("$").to_string();
         let mut string_size = String::new();
         for (i, c) in redis_string.chars().enumerate(){
             if c.is_ascii_control() && match redis_string.chars().nth(i+1){
                 Some(c) => c.is_ascii_control(),
                 None => return Err(anyhow::Error::new(MyRedisError::InvalidRedisSynatx{message:format!("missing end of redis string (index: {} out of range for: {})",i.to_string(), redis_string)}))
             }{
-                redis_string = redis_string[i+1..].to_string();
+                redis_string = redis_string[i+2..].to_string();
                 break;
             }else{
                 string_size.push(c);
@@ -325,5 +322,25 @@ mod tests {
         RedisType::parse(red_string).unwrap();
     }
 
+    #[test]
+    fn test_redis_bulk_string_parse_correct_1(){
+        let red_string = String::from("$11\r\nHello World\r\n");
+        let resp = RedisType::parse(red_string).unwrap().unwrap();
+        assert_eq!(resp.get_value().unwrap(),vec!["Hello World".to_string()]);
+    }
+
+    #[test]
+    fn test_redis_bulk_string_parse_correct_2(){
+        let red_string = String::from("$15\r\nI love E girls!\r\n");
+        let resp = RedisType::parse(red_string).unwrap().unwrap();
+        assert_eq!(resp.get_value().unwrap(),vec!["I love E girls!".to_string()]);
+    }
+
+    #[test]
+    fn test_redis_bulk_string_parse_correct_3(){
+        let red_string = String::from("$17\r\nI love E girls!13\r\n");
+        let resp = RedisType::parse(red_string).unwrap().unwrap();
+        assert_eq!(resp.get_value().unwrap(),vec!["I love E girls!13".to_string()]);
+    }
     
 }
